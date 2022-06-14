@@ -363,6 +363,19 @@ def get_vmware_tech_dict(instance, env, vm_id):
     rh = env.resource_handler
     return tech_dict, rh, env
 
+def get_azure_tech_dict(instance, env, vm_id):
+    attributes = instance.get("attributes")
+   
+    tech_dict = {
+        "location": attributes.get("location"),
+        "resource_group": attributes.get("resource_group_name"),
+        "storage_account": None,
+        "extensions": [],
+        "availability_set": None,
+        "node_size": attributes.get("vm_size"),
+    }
+    rh = env.resource_handler
+    return tech_dict, rh, env
 
 def get_aws_vpc_id(env, region, subnet_id):
     rh = env.resource_handler
