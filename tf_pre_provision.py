@@ -6,7 +6,11 @@ Perform setup logic before executing "constructive" Terraform subcommands
 import os
 import pwd
 from typing import Dict, Tuple, Union
+import json
 
+import html
+
+import ast
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.template import Template, Context
@@ -15,6 +19,7 @@ from cbhooks.models import TerraformPlanHook, TerraformStateFile
 from cbhooks.services import TerraformFileService
 from common.methods import get_proxies, get_bypass_proxy_domains
 from jobs.models import Job
+from orders.models import BlueprintOrderItem
 from resources.models import Resource
 from servicecatalog.models import (
     RunTerraformPlanHookServiceItem,
