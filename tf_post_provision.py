@@ -3,6 +3,7 @@ Perform teardown and integration logic after executing "constructive" Terraform
 subcommands (e.g. `init`, `plan`, and `apply`).
 """
 
+from logging.config import _LoggerConfiguration
 from typing import List
 
 import json
@@ -290,7 +291,7 @@ def _parse_state_file_for_server_ids(state_file_obj: TerraformStateFile,
                             tech_dict = None
                             resource_type = resource_dict.get("type")
                             supported_types = [
-                                "aws_instance", "vsphere_virtual_machine"
+                                "aws_instance", "vsphere_virtual_machine", "azurerm_virtual_machine"
                             ]
                             if resource_type in supported_types:
                                 tech_dict, rh, env = get_tech_dict(
@@ -317,6 +318,8 @@ def get_tech_dict(instance, vm_id, job, resource_type):
         return get_aws_tech_dict(instance, env, vm_id)
     if resource_type == "vsphere_virtual_machine":
         return get_vmware_tech_dict(instance, env, vm_id)
+    if resource_type == "azurerm_virtual_machine":
+        return get_azure_tech_dict(instance, env, vm_id)
 
 
 def get_environment_from_job(job):
@@ -373,10 +376,16 @@ def get_azure_tech_dict(instance, env, vm_id):
         "extensions": [],
         "availability_set": None,
         "node_size": attributes.get("vm_size"),
+        
     }
+    logger.info(
+                    f"Found a terraform attribute location of type '{attributes.get('location')}'."
+                    f"Found a terraform attribute resource group of type '{attributes.get('resource_group_name')}'."
+                    f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'."
+                )
     rh = env.resource_handler
     return tech_dict, rh, env
-
+    
 def get_aws_vpc_id(env, region, subnet_id):
     rh = env.resource_handler
     wrapper = rh.cast().get_api_wrapper()
