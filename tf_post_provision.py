@@ -3,7 +3,7 @@ Perform teardown and integration logic after executing "constructive" Terraform
 subcommands (e.g. `init`, `plan`, and `apply`).
 """
 
-from logging.config import _LoggerConfiguration
+#from logging.config import _LoggerConfiguration
 from typing import List
 
 import json
@@ -366,9 +366,11 @@ def get_vmware_tech_dict(instance, env, vm_id):
     rh = env.resource_handler
     return tech_dict, rh, env
 
-def get_azure_tech_dict(instance, env, vm_id, logger):
+def get_azure_tech_dict(instance, env, vm_id):
     attributes = instance.get("attributes")
-   
+    logger.info(f"Found a terraform attribute location of type '{attributes.get('location')}'.")
+    logger.inf(f"Found a terraform attribute resource group of type '{attributes.get('resource_group_name')}'.")
+    logger.info(f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'.")
     tech_dict = {
         "location": attributes.get("location"),
         "resource_group_arm": attributes.get("resource_group_name"),
@@ -378,9 +380,7 @@ def get_azure_tech_dict(instance, env, vm_id, logger):
         "node_size": attributes.get("vm_size"),
         
     }
-    logger.info(f"Found a terraform attribute location of type '{attributes.get('location')}'.")
-    logger.inf(f"Found a terraform attribute resource group of type '{attributes.get('resource_group_name')}'.")
-    logger.info(f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'.")
+
 
     rh = env.resource_handler
     return tech_dict, rh, env
