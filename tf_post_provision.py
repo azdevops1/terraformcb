@@ -198,6 +198,7 @@ def get_or_create_server_records_from_state_file(
                     environment=env,
                 )
                 server.save()
+                # server.resource_group = resource_group
                 # We have to have already saved the new server record before this
                 # will effectively be added as a custom field value, then
                 # we have to save again to apply that relationship.
@@ -210,6 +211,8 @@ def get_or_create_server_records_from_state_file(
                 try:
                     rh.cast().update_tech_specific_server_details(server,
                                                                   tech_dict)
+                    logger.info(f"$$$$$$$$${server}'.")
+
                     server.refresh_info()
                 except Exception as err:
                     set_progress(f"tech_dict: {tech_dict}")
@@ -374,7 +377,7 @@ def get_azure_tech_dict(instance, env, vm_id):
     logger.info(f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'.")
     tech_dict = {
         "location": attributes.get("location"),
-        #"resource_group_arm": attributes.get("resource_group_name"),
+        "resource_group": attributes.get("resource_group_name"),
         "storage_account": None,
         "extensions": [],
         "availability_set": None,
