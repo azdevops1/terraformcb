@@ -373,7 +373,7 @@ def get_azure_tech_dict(instance, env, vm_id):
     logger.info(f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'.")
     tech_dict = {
         "location": attributes.get("location"),
-        "resource_group_arm": attributes.get("resource_group_name"),
+        "resource_group": attributes.get("resource_group_name"),
         "storage_account": None,
         "extensions": [],
         "availability_set": None,
