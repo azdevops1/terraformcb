@@ -212,6 +212,7 @@ def get_or_create_server_records_from_state_file(
                                                                   tech_dict)
                     server.refresh_info()
                 except Exception as err:
+                    set_progress(f"tech_dict: {tech_dict}")
                     logger.warning(f'Unable to directly sync server, verify '
                                    f'that the chosen region/vpc has been '
                                    f'imported to CloudBolt. Error: {err}')
