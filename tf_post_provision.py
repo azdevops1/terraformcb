@@ -366,7 +366,7 @@ def get_vmware_tech_dict(instance, env, vm_id):
     rh = env.resource_handler
     return tech_dict, rh, env
 
-def get_azure_tech_dict(instance, env, vm_id):
+def get_azure_tech_dict(instance, env, vm_id, logger):
     attributes = instance.get("attributes")
    
     tech_dict = {
@@ -378,11 +378,10 @@ def get_azure_tech_dict(instance, env, vm_id):
         "node_size": attributes.get("vm_size"),
         
     }
-    logger.info(
-                    f"Found a terraform attribute location of type '{attributes.get('location')}'."
-                    f"Found a terraform attribute resource group of type '{attributes.get('resource_group_name')}'."
-                    f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'."
-                )
+    logger.info(f"Found a terraform attribute location of type '{attributes.get('location')}'.")
+    logger.inf(f"Found a terraform attribute resource group of type '{attributes.get('resource_group_name')}'.")
+    logger.info(f"Found a terraform attribute node size of type '{attributes.get('vm_size')}'.")
+
     rh = env.resource_handler
     return tech_dict, rh, env
     
