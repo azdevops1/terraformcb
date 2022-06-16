@@ -159,10 +159,12 @@ def get_or_create_server_records_from_state_file(
         f"Will create or update records for {len(server_ids)} servers in CloudBolt."
     )
     env = Environment.objects.get(name="Unassigned")
+    rh = None
     servers = []
 
     for svr_id in server_ids:
         tech_dict = None
+        logger.info(f'tech_dict: {tech_dict}')
         if type(svr_id) == dict:
             logger.info(f'svr_id: {svr_id}')
             tech_dict = svr_id["tech_dict"]
@@ -173,6 +175,11 @@ def get_or_create_server_records_from_state_file(
         if svr_id:
             # Server manager does not have the create_or_update method,
             # so we do this manually.
+            hostname = svr_id
+            if rh:
+                if rh.real_type.name == 'Azure resource handler':
+                    hostname = svr_id.split('/')[-1]
+                    svr_id = get_azure_vm_id(svr_id, rh)
             try:
                 server = Server.objects.get(resource_handler_svr_id=svr_id)
                 server.resource = resource
@@ -186,10 +193,10 @@ def get_or_create_server_records_from_state_file(
                     f"Creating new server with resource_handler_svr_id "
                     f"'{svr_id}', resource '{resource}', group '{group}', "
                     f"owner '{resource.owner}', and "
-                    f"environment '{env}'"
+                    f"environment '{env}, and rh: {rh}'"
                 )
                 server = Server(
-                    hostname=svr_id,
+                    hostname=hostname,
                     resource_handler_svr_id=svr_id,
                     resource=resource,
                     group=group,
@@ -211,12 +218,20 @@ def get_or_create_server_records_from_state_file(
                                                                   tech_dict)
                     server.refresh_info()
                 except Exception as err:
+                    logger.info(f"tech_dict: {tech_dict}")
                     logger.warning(f'Unable to directly sync server, verify '
                                    f'that the chosen region/vpc has been '
                                    f'imported to CloudBolt. Error: {err}')
             servers.append(server)
 
     return servers
+
+
+def get_azure_vm_id(svr_id, rh):
+    wrapper = rh.cast().get_api_wrapper()
+    resource_client = wrapper.resource_client
+    resource = resource_client.resources.get_by_id(svr_id, "2022-03-01")
+    return resource.as_dict()["properties"]["vmId"]
 
 
 def _parse_state_file_for_server_ids(state_file_obj: TerraformStateFile,
@@ -274,49 +289,56 @@ def _parse_state_file_for_server_ids(state_file_obj: TerraformStateFile,
                     vm_id = resource_dict.get("primary", {}).get("id")
                     if vm_id:
                         server_ids.append(vm_id)
+                elif version == 4:
+                    instances = resource_dict.get("instances")
+                    for instance in instances:
+                        vm_id = instance.get("attributes").get("id")
+                        tech_dict = None
+                        resource_type = resource_dict.get("type")
+                        supported_types = [
+                            "aws_instance",
+                            "vsphere_virtual_machine",
+                            "azurerm_virtual_machine",
+                            "azurerm_linux_virtual_machine",
+                            "azurerm_windows_virtual_machine"
+                        ]
+                        if resource_type in supported_types:
+                            tech_dict, rh, env = get_tech_dict(
+                                instance,
+                                vm_id,
+                                job,
+                                resource_type
+                            )
+                        if tech_dict:
+                            vm_id = {
+                                "id": vm_id,
+                                "tech_dict": tech_dict,
+                                "rh": rh,
+                                "env": env
+                            }
+                        server_ids.append(vm_id)
                 else:
                     logger.warning(
                         f"Detected that the state file's version is "
                         f"{version} and CloudBolt currently only supports"
-                        f"version 3."
+                        f"version 3 and 4."
                     )
-                    if version == 4:
-                        # We shouldn't be able to get to this step because Terraform
-                        # variable - action input parsing should fail first,
-                        # but we have left this code here for future support.
-                        instances = resource_dict.get("instances")
-                        for instance in instances:
-                            vm_id = instance.get("attributes").get("id")
-                            tech_dict = None
-                            resource_type = resource_dict.get("type")
-                            supported_types = [
-                                "aws_instance", "vsphere_virtual_machine"
-                            ]
-                            if resource_type in supported_types:
-                                tech_dict, rh, env = get_tech_dict(
-                                    instance,
-                                    vm_id,
-                                    job,
-                                    resource_type
-                                )
-                            if tech_dict:
-                                vm_id = {
-                                    "id": vm_id,
-                                    "tech_dict": tech_dict,
-                                    "rh": rh,
-                                    "env": env
-                                }
-                            server_ids.append(vm_id)
 
     return server_ids
 
 
 def get_tech_dict(instance, vm_id, job, resource_type):
     env = get_environment_from_job(job)
+    logger.info(f'Environment selected: {env.name}')
     if resource_type == "aws_instance":
         return get_aws_tech_dict(instance, env, vm_id)
     if resource_type == "vsphere_virtual_machine":
         return get_vmware_tech_dict(instance, env, vm_id)
+    if resource_type == "azurerm_windows_virtual_machine" or \
+            resource_type == "azurerm_linux_virtual_machine" or \
+            resource_type == "azurerm_virtual_machine":
+        logger.info(f'Checking Azure Tech Dict')
+        return get_azure_tech_dict(instance, env, vm_id)
 
 
 def get_environment_from_job(job):
@@ -359,6 +381,20 @@ def get_vmware_tech_dict(instance, env, vm_id):
         "linked_clone": attributes.get("clone")[0].get("linked_clone"),
         # cluster =
         "moid": attributes.get("moid")
+    }
+    rh = env.resource_handler
+    return tech_dict, rh, env
+
+
+def get_azure_tech_dict(instance, env, vm_id):
+    attributes = instance.get("attributes")
+    tech_dict = {
+        "location": attributes.get("location"),
+        "resource_group": attributes.get("resource_group_name"),
+        "storage_account": None,
+        "extensions": [],
+        "availability_set": None,
+        "node_size": attributes.get("vm_size"),
     }
     rh = env.resource_handler
     return tech_dict, rh, env
