@@ -107,6 +107,7 @@ def pre_provision(
             if rendered_action_input != value:
                 logger.info(f'Rendered action_input: {value} to '
                             f'rendered_action_input: {rendered_action_input}')
+            """
             try:
                 # Doing a literal eval allows us to pass map and lists in to TF
                 logger.debug(f'{key} prior to literal eval: '
@@ -116,6 +117,7 @@ def pre_provision(
             except ValueError:
                 # Expected error for strings.
                 logger.debug(f"Value for {key} unable to be parsed")
+            """
         else:
             rendered_action_input = value
         rendered_inputs[key] = rendered_action_input
