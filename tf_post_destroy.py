@@ -40,11 +40,5 @@ def set_historical_servers(resource):
         created_by_tf = server.get_cfv_for_custom_field(
             "created_by_terraform").value
         if created_by_tf:
-            try:
-                server.refresh_info()
-            except NotFoundException:
-                # If here, the server no longer exists, set to HISTORICAL in CB
-                logger.info(f'Server: {server.hostname} not found, assuming '
-                            f'deleted by TF, setting to Historical')
-                server.status = 'HISTORICAL'
-                server.save()
+            server.status = 'HISTORICAL'
+            server.save()
